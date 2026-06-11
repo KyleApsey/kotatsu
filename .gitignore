@@ -1,8 +1,29 @@
+# Nuxt dev/build outputs
+.output
+.data
+.nuxt
+.nitro
+.cache
+dist
 
-.gstack/
-.env
-.env.local
-raw_breakdown.md
-DESIGN.md
+# Node dependencies
+node_modules
+
+# Logs
+logs
+*.log
+
+# Misc
+.DS_Store
+.fleet
+.idea
+.gstack
+supabase/.temp
 CLAUDE.md
-.idea/
+DESIGN.md
+raw_breakdown.md
+
+# Local env files
+.env
+.env.*
+!.env.example
