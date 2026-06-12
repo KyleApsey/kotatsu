@@ -39,8 +39,8 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #F7F6F1;
+  background: var(--color-bg);
   font-size: 15px;
-  color: #999;
+  color: var(--color-text-tertiary);
 }
 </style>

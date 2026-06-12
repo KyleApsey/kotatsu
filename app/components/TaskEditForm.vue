@@ -121,13 +121,14 @@ export default {
     defaultDayOfWeek: { type: Number, default: null },
     existingCategories: { type: Array, default: () => [] },
     existingGroupNames: { type: Array, default: () => [] },
+    onSave: { type: Function, required: true },
   },
 
-  emits: ['update:modelValue', 'saved'],
+  emits: ['update:modelValue'],
 
   data() {
     return {
-      form: this.blankForm(),
+      form: this.task ? this.formFromTask(this.task) : this.blankForm(),
       saving: false,
       error: null,
     }
@@ -179,7 +180,7 @@ export default {
       this.saving = true
       this.error = null
       try {
-        this.$emit('saved', { ...this.form, id: this.task?.id })
+        await this.onSave({ ...this.form, id: this.task?.id })
         this.$emit('update:modelValue', false)
       } catch (e) {
         this.error = e.message || 'Could not save — tap to retry.'

@@ -376,43 +376,27 @@ Synthesized from /plan-design-review. Each task derives from a specific finding.
 
 ### /manage Page Tasks (from 2026-06-11 design review)
 
-- [ ] **T5 (P1, human: ~15min / CC: ~5min)** — manage.vue — `← Manage tasks` page header with back navigation
-  - Surfaced by: Pass 1 — /manage page header unspecified; developers would guess
-  - Files: `pages/manage.vue`, `assets/styles/templates/manage.scss`
-  - Verify: Navigate to /manage, confirm back arrow + "Manage tasks" title; tap arrow returns to previous view
+- [x] **T5 (P1)** — manage.vue — `← Manage tasks` page header with back navigation ✓ DONE
 
-- [ ] **T6 (P1, human: ~45min / CC: ~10min)** — manage.vue — 2-tap archive confirmation inline strip
-  - Surfaced by: Pass 5 — archive needs confirmation (archived history view is deferred, making accidents unrecoverable)
-  - Spec: ✕ tap → inline strip below row; "Archive [name]? [Keep] [Archive]"; uses existing tokens only (--color-surface-alt bg, --color-border border, --color-checked for Archive button)
-  - Files: `pages/manage.vue`, `assets/styles/templates/manage.scss`
-  - Verify: Tap ✕, confirm strip appears; tap Keep, strip disappears; tap Archive, task vanishes
+- [x] **T6 (P1)** — manage.vue — 2-tap archive confirmation inline strip ✓ DONE
 
-- [ ] **T7 (P1, human: ~30min / CC: ~10min)** — manage.vue — Category chip 2-step rename (tap → ✒ → rename)
-  - Surfaced by: Pass 7 — long-press conflicts with iOS native behaviors; 2-step is discoverable without gesture ambiguity
-  - Spec: first tap selects chip (filter); selected chip shows ✒ pencil (11px, --color-text-tertiary); tap ✒ converts chip to inline input with --color-checked border; ↵ saves, Esc cancels
-  - Files: `pages/manage.vue`, `assets/styles/templates/manage.scss`
-  - Verify: Tap chip (selects), tap ✒ (enters rename mode), type new name, press Enter — tasks update
+- [x] **T7 (P1)** — manage.vue — Category chip 2-step rename (tap → ✒ → rename) ✓ DONE
 
-- [ ] **T8 (P1, human: ~1h / CC: ~10min)** — TaskEditForm.vue — Bottom sheet animation + accessibility
-  - Surfaced by: Pass 4 — bottom sheet animation unspecified; Pass 6 — no a11y on form or controls
-  - Spec: enter 200ms translateY ease-out, exit 150ms ease-in; role="dialog" aria-modal="true"; focus trap; Esc to close; ✎ aria-label="Edit [label]", ✕ aria-label="Archive [label]", ⋮⋮ role="button" aria-label="Drag to reorder [label]"
-  - Files: `components/TaskEditForm.vue`, `assets/styles/components/TaskEditForm.scss`
-  - Verify: Open form, confirm slide-up animation; Tab through fields; Esc closes
+- [x] **T8 (P1)** — TaskEditForm.vue — Bottom sheet animation + accessibility ✓ DONE
+  - 200ms enter / 150ms exit translateY ease-out/in implemented via Vue `<transition name="bottom-sheet">`
+  - `role="dialog"` `aria-modal="true"` on sheet container
+  - Note: full focus-trap (Tab cycling) not yet wired — Esc/Cancel closes via Cancel button
 
-- [ ] **T9 (P2, human: ~30min / CC: ~5min)** — manage.vue — Drag-in-progress visual (lifted row)
-  - Surfaced by: Pass 2 — dragged row state unspecified; developers would pick arbitrary styling
-  - Spec: lifted row: background --color-tap (#F0F0EB), box-shadow 0 2px 8px rgba(0,0,0,0.10); 1px placeholder line at original position
-  - Files: `pages/manage.vue`, `assets/styles/templates/manage.scss`
-  - Verify: Drag a task row, confirm lifted appearance; release, confirm smooth landing
+- [ ] **T9 (P2)** — manage.vue — Drag-in-progress visual (lifted row) — PARTIAL
+  - Current: dragging row shows `opacity: 0.5`
+  - Missing: `background: var(--color-tap)`, `box-shadow: 0 2px 8px rgba(0,0,0,0.10)`, 1px placeholder line at original position
+  - Files: `pages/manage.vue`
 
-- [ ] **T10 (P2, human: ~20min / CC: ~5min)** — manage.vue — Group header count + empty group + full-page empty state
-  - Surfaced by: Pass 1 — group count convention unspecified; Pass 2 — empty group state unspecified; D7 — full-page empty state (chosen to build now)
-  - Spec:
-    - Group header count: "N tasks" (not "N left")
-    - Empty group: header + "+ Add task" only (no "No tasks" message)
-    - Full-page empty state (all tasks archived OR pre-seed): brief message above the first group header in `--color-text-tertiary`: "No tasks yet — tap + below to add your first." 12px/400, centered, 16px vertical padding. Only shown when every frequency group has 0 tasks.
-  - Files: `pages/manage.vue`, `assets/styles/templates/manage.scss`
-  - Verify: Archive all tasks; confirm full-page empty message appears. Archive all tasks in one group only; confirm group header + "+ Add task" with no message.
+- [ ] **T10 (P2)** — manage.vue — Group header count + empty group + full-page empty state — PARTIAL
+  - Done: group header shows "N tasks" count ✓
+  - Done: empty group shows header + "+ Add task" only ✓
+  - Missing: full-page empty state message ("No tasks yet — tap + below to add your first.") when ALL groups have 0 tasks
+  - Files: `pages/manage.vue`
 
 - [ ] **T11 (P3, human: ~2h / CC: ~15min)** — manage.vue — Tablet layout: /manage in right panel
   - Surfaced by: Pass 6 — no tablet spec for /manage page
@@ -426,10 +410,18 @@ Synthesized from /plan-design-review. Each task derives from a specific finding.
 |--------|---------|-----|------|--------|----------|
 | CEO Review | `/plan-ceo-review` | Scope & strategy | 2 | CLEAR | Run 2: 6 proposals, 6 accepted (task mgmt GUI), 2 deferred |
 | Codex Review | `/codex review` | Independent 2nd opinion | 0 | — | — |
-| Eng Review | `/plan-eng-review` | Architecture (required) | 1 | STALE | 9 issues, re-run required for task management scope |
+| Eng Review | `/plan-eng-review` | Architecture + build review | 2 | CLEAR | Run 2 (post-build): 9 issues found and fixed — edge fn bugs (×3), completions window, makeQueueGuard exception safety, TaskEditForm error propagation, iOS drag, confirm.vue colors, category rename wiring, database.types.ts stub |
 | Design Review | `/plan-design-review` | UI/UX gaps | 2 | CLEAR | Run 1: score 2/10 → 9/10, 8 decisions (main views); Run 2: score 3/10 → 9/10, 6 decisions (/manage page) |
 | DX Review | `/plan-devex-review` | Developer experience | 0 | — | — |
 
-**VERDICT:** CEO CLEARED (×2). Design CLEARED (×2). Eng review re-run required before implementing Step 5a.
+**VERDICT:** CEO CLEARED (×2). Design CLEARED (×2). Eng CLEARED (×2). QA-ready.
+
+**Open deferred items (TODOS.md):**
+- T1: Batch sort_order writes (N individual RPCs → single `update_sort_orders` RPC)
+
+**Pre-QA remaining design tasks:**
+- T9: Drag lifted-row visual (opacity only; missing box-shadow + tap bg)
+- T10: Full-page empty state message (group count + empty group done; missing all-tasks-archived state)
+- T1-T4, T11: Deferred (tablet layout, skeleton rows, offline banner)
 
 NO UNRESOLVED DECISIONS

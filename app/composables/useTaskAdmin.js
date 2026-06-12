@@ -1,6 +1,5 @@
-export function useTaskAdmin() {
-  const supabase = useSupabaseClient()
-
+// Pure factory — accepts supabase client directly so it can be tested without Nuxt runtime
+export function createTaskAdmin(supabase) {
   async function addTask({ label, frequency, time_of_day, day_of_week, category, group_name }) {
     const { data, error } = await supabase.rpc('add_task_with_sort_order', {
       p_label: label.trim(),
@@ -57,4 +56,8 @@ export function useTaskAdmin() {
   }
 
   return { addTask, updateTask, archiveTask, updateSortOrder, renameCategory }
+}
+
+export function useTaskAdmin() {
+  return createTaskAdmin(useSupabaseClient())
 }

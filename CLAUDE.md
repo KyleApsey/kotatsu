@@ -27,7 +27,8 @@ Plans and design docs are in `~/.gstack/projects/cleaning_schedule/`.
 
 ```
 tasks: id, label, frequency (daily/weekly/monthly/quarterly), category (default 'Cleaning'),
-       group_name, day_of_week (ISO 8601: 1=Mon…7=Sun), time_of_day ('morning'|'evening'|null), sort_order
+       group_name, day_of_week (ISO 8601: 1=Mon…7=Sun), time_of_day ('morning'|'evening'|null),
+       sort_order (int), archived_at (timestamptz, null = active), category_version (int, default 0)
 
 completions: id, task_id (FK), completed_at (timestamptz), completed_by (text), period_key (text)
              UNIQUE(task_id, period_key)
@@ -47,12 +48,78 @@ push_subscriptions: id, endpoint (UNIQUE), p256dh, auth, user_email, created_at
 
 `usePeriodKey(task, now)` computes the key using `task.frequency` + `task.time_of_day` + local `Date`. Always use `Intl.DateTimeFormat` with an explicit IANA timezone (e.g., `America/Detroit`) — not `Date.getFullYear()` / `Date.getMonth()`.
 
+## Project Structure (Nuxt 4)
+
+Nuxt 4 uses an `app/` source directory:
+
+```
+app/
+  components/          # TaskRow, TaskGroup, TaskEditForm, TabNav, AllDoneBanner
+  composables/         # useTasks.js, useTaskAdmin.js, usePeriodKey.js, useStreak.js
+  pages/               # index.vue (home), login.vue, confirm.vue (PKCE callback), manage.vue
+  plugins/             # push-subscription.client.js (registers SW push on login)
+  service-worker/      # sw.js (injectManifest strategy)
+  types/               # database.types.ts (generated via supabase gen types typescript)
+  assets/styles/       # utilities/ (_variables.scss, _reset.scss, _index.scss)
+supabase/
+  functions/           # send-evening-reminders/ (Deno Edge Function)
+  seed.sql             # one-time task seed
+tests/                 # Vitest test suite (see Testing section)
+```
+
+## Key Composables
+
+**`useTasks()`** — Supabase data + Realtime subscriptions for a page.
+- Returns `{ tasks, completions, loading, cleanup }`.
+- Both Realtime channels use `makeQueueGuard(fn)` to coalesce burst events into at-most one pending refetch.
+- `makeQueueGuard(fn)` is exported as a pure function for unit testing.
+- `completions` fetches the last 365 days to support streak calculations without capping them.
+
+**`useTaskAdmin()`** — Mutations (add, update, archive, reorder, rename category).
+- Internally calls `createTaskAdmin(supabase)` factory for testability.
+- `createTaskAdmin(supabase)` is exported as a pure factory for unit testing without Nuxt runtime.
+- `renameCategory(oldName, newName, categoryVersion)` uses optimistic locking via `category_version` to prevent concurrent renames from stomping each other.
+
+**`usePeriodKey(task, now)`** — Computes the `period_key` string for a task at a given time.
+- Always uses `Intl.DateTimeFormat` with `NUXT_PUBLIC_HOUSEHOLD_TZ` — never `Date.getFullYear()` etc.
+
+**`useStreak()`** — Computes the current daily morning streak from completions history.
+
 ## Supabase Notes
 
-- RLS is enabled on all three tables; `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` is in the migration
+- RLS is enabled on all three tables
 - Email allowlist via RLS policy: `auth.email() IN ('kapseydev@gmail.com', 'hengy.brooke@gmail.com')`
-- Edge Functions use `SUPABASE_SERVICE_ROLE_KEY` (not anon key) to bypass RLS
-- Realtime: `supabase.channel('completions').on('postgres_changes', ...)` — use this API, not the deprecated `.from().on()`
+- Edge Functions use `SUPABASE_SECRET_KEY` (auto-injected by Supabase runtime) to bypass RLS — never expose this in client env vars
+- `VAPID_PRIVATE_KEY` must be a Supabase project secret (`supabase secrets set`) — never in `.env` or Vercel env vars
+- Realtime: `supabase.channel('name').on('postgres_changes', ...)` — use this API, not the deprecated `.from().on()`
+- Auth flow: PKCE magic-link → `/confirm?code=…` → `supabase.auth.exchangeCodeForSession(code)` → redirect to `/`
+
+## Testing
+
+```bash
+npm test          # run all 68 tests
+npm run test:watch
+```
+
+**Test environment:** Vitest + `happy-dom`. Do NOT use `@nuxt/test-utils` `nuxt` environment — it conflicts with `@vite-pwa/nuxt` and hangs.
+
+**Patterns:**
+
+- **Pure factory extraction** — composables that call Supabase auto-imports are tested by exporting a factory (`createTaskAdmin(supabase)`, `makeQueueGuard(fn)`) and passing a mock client. The `use*()` wrapper calls the factory with `useSupabaseClient()`.
+- **Methods-in-isolation** — Vue Options API computed/methods are tested via `.call()` on plain objects without mounting. See `tests/ManagePage.test.js`.
+- **Teleport stub** — Components using `<teleport to="body">` need `global: { stubs: { teleport: { template: '<div><slot /></div>' } } }` in mount options to render inline.
+
+Test files live in `tests/` (not co-located):
+| File | What it tests |
+|------|--------------|
+| `usePeriodKey.test.js` | period_key computation for all frequencies |
+| `useStreak.test.js` | streak calculation logic |
+| `TaskRow.test.js` | optimistic check/uncheck, last-done display |
+| `groupTasksByFrequency.test.js` | grouping helper |
+| `useTaskAdmin.test.js` | add/archive/rename mutations via mock Supabase |
+| `TaskEditForm.test.js` | form rendering, pre-population, onSave callback |
+| `useTasks.test.js` | makeQueueGuard burst-protection behavior |
+| `ManagePage.test.js` | sections computed, filteredTasks, confirmArchive methods |
 
 ## Design System
 

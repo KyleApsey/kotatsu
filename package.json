@@ -1,5 +1,6 @@
 {
   "name": "kotatsu",
+  "version": "1.0.0",
   "type": "module",
   "private": true,
   "scripts": {
@@ -9,7 +10,8 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "changelog": "git-cliff --bump --unreleased --prepend CHANGELOG.md --sort newest"
   },
   "dependencies": {
     "@nuxtjs/supabase": "^2.0.9",

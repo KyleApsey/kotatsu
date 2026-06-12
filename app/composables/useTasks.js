@@ -1,3 +1,19 @@
+// Ensures at most one in-flight call + one queued call for Realtime burst events
+export function makeQueueGuard(fn) {
+  let inFlight = false
+  let pending = false
+  return async function guarded() {
+    if (inFlight) { pending = true; return }
+    inFlight = true
+    try {
+      await fn()
+    } finally {
+      inFlight = false
+      if (pending) { pending = false; guarded() }
+    }
+  }
+}
+
 export function groupTasksByFrequency(tasks) {
   const result = {
     daily: { morning: [], evening: [] },
@@ -39,9 +55,6 @@ export function useTasks() {
 
   const supabase = useSupabaseClient()
 
-  let fetchInProgress = false
-  let pendingRefetch = false
-
   async function fetchTasks() {
     const { data } = await supabase
       .from('tasks')
@@ -52,20 +65,17 @@ export function useTasks() {
   }
 
   async function fetchCompletions() {
+    const since = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString()
     const { data } = await supabase
       .from('completions')
       .select('*')
+      .gte('completed_at', since)
       .order('completed_at', { ascending: false })
     completions.value = data || []
   }
 
-  async function handleTaskChange() {
-    if (fetchInProgress) { pendingRefetch = true; return }
-    fetchInProgress = true
-    await fetchTasks()
-    fetchInProgress = false
-    if (pendingRefetch) { pendingRefetch = false; handleTaskChange() }
-  }
+  const handleTaskChange = makeQueueGuard(fetchTasks)
+  const handleCompletionChange = makeQueueGuard(fetchCompletions)
 
   async function init() {
     loading.value = true
@@ -77,7 +87,7 @@ export function useTasks() {
 
   const completionsChannel = supabase
     .channel(`completions-${uid}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'completions' }, fetchCompletions)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'completions' }, handleCompletionChange)
     .subscribe()
 
   const tasksChannel = supabase

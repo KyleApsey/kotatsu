@@ -7,20 +7,43 @@
     <div v-if="loading" class="manage-loading">Loading…</div>
 
     <template v-else>
-      <!-- Category filter chips -->
+      <!-- Category filter chips (2-step rename: tap to filter, tap pencil to rename) -->
       <div v-if="categories.length > 1" class="category-chips">
         <button
           class="chip"
           :class="{ 'chip--active': !activeCategory }"
-          @click="activeCategory = null"
+          @click="activeCategory = null; renamingCategory = null"
         >All</button>
-        <button
-          v-for="cat in categories"
-          :key="cat"
-          class="chip"
-          :class="{ 'chip--active': activeCategory === cat }"
-          @click="activeCategory = cat"
-        >{{ cat }}</button>
+
+        <div v-for="cat in categories" :key="cat" class="chip-wrap">
+          <!-- Rename mode: inline input -->
+          <template v-if="renamingCategory === cat">
+            <input
+              ref="renameInput"
+              v-model="renameCategoryName"
+              class="chip-rename-input"
+              @keyup.enter="commitRename"
+              @keyup.escape="renamingCategory = null"
+            />
+            <button class="chip-rename-save" @click="commitRename">✓</button>
+            <button class="chip-rename-cancel" @click="renamingCategory = null">✕</button>
+          </template>
+
+          <!-- Normal/active mode -->
+          <template v-else>
+            <button
+              class="chip"
+              :class="{ 'chip--active': activeCategory === cat }"
+              @click="activeCategory = cat"
+            >{{ cat }}</button>
+            <button
+              v-if="activeCategory === cat"
+              class="chip-edit-btn"
+              aria-label="Rename category"
+              @click.stop="startRename(cat)"
+            >✎</button>
+          </template>
+        </div>
       </div>
 
       <!-- Task groups by frequency -->
@@ -34,11 +57,12 @@
         <template v-for="task in section.tasks" :key="task.id">
           <div
             class="manage-row"
-            :draggable="true"
-            @dragstart="onDragStart($event, task, section.key)"
-            @dragover.prevent="onDragOver($event, task, section.key)"
-            @drop="onDrop($event, task, section.key)"
-            @dragend="onDragEnd"
+            :class="{ 'manage-row--dragging': draggedTask?.id === task.id }"
+            :data-task-id="task.id"
+            :data-section-key="section.key"
+            @touchstart.passive="onTouchStart($event, task, section.key)"
+            @touchmove="onTouchMove($event)"
+            @touchend.passive="onTouchEnd($event)"
           >
             <span class="drag-handle">⋮⋮</span>
             <span class="manage-row-label">{{ task.label }}</span>
@@ -68,7 +92,7 @@
       :default-day-of-week="formDefaultDayOfWeek"
       :existing-categories="existingCategories"
       :existing-group-names="existingGroupNames"
-      @saved="onFormSaved"
+      :on-save="onFormSaved"
     />
   </div>
 </template>
@@ -87,14 +111,16 @@ export default {
 
   setup() {
     const { tasks, loading, cleanup } = useTasks()
-    const { addTask, updateTask, archiveTask, updateSortOrder } = useTaskAdmin()
-    return { tasks, loading, cleanup, addTask, updateTask, archiveTask, updateSortOrder }
+    const { addTask, updateTask, archiveTask, updateSortOrder, renameCategory } = useTaskAdmin()
+    return { tasks, loading, cleanup, addTask, updateTask, archiveTask, updateSortOrder, renameCategory }
   },
 
   data() {
     return {
       activeCategory: null,
       archiveTarget: null,
+      renamingCategory: null,
+      renameCategoryName: '',
       formOpen: false,
       editingTask: null,
       formDefaultFrequency: 'daily',
@@ -140,6 +166,33 @@ export default {
   },
 
   methods: {
+    startRename(cat) {
+      this.renamingCategory = cat
+      this.renameCategoryName = cat
+      this.$nextTick(() => {
+        const input = this.$refs.renameInput
+        const el = Array.isArray(input) ? input[0] : input
+        el?.focus()
+        el?.select()
+      })
+    },
+
+    async commitRename() {
+      const oldName = this.renamingCategory
+      const newName = this.renameCategoryName.trim()
+      if (!newName || newName === oldName) { this.renamingCategory = null; return }
+
+      const categoryVersion = this.tasks.find(t => t.category === oldName)?.category_version ?? 0
+      try {
+        await this.renameCategory(oldName, newName, categoryVersion)
+        if (this.activeCategory === oldName) this.activeCategory = newName
+        this.renamingCategory = null
+      } catch (e) {
+        this.renamingCategory = null
+        alert(e.message || 'Rename failed — refresh and try again.')
+      }
+    },
+
     openEdit(task) {
       this.editingTask = task
       this.formOpen = true
@@ -170,43 +223,44 @@ export default {
       }
     },
 
-    // Drag-to-reorder (within section only)
-    onDragStart(event, task, sectionKey) {
+    // Touch-based drag-to-reorder (works on iOS Safari; within section only)
+    onTouchStart(event, task, sectionKey) {
       this.draggedTask = task
       this.draggedSection = sectionKey
-      event.dataTransfer.effectAllowed = 'move'
     },
 
-    onDragOver(event, overTask, sectionKey) {
-      // Cancel drag if crossing section boundary
-      if (sectionKey !== this.draggedSection) {
-        event.dataTransfer.dropEffect = 'none'
-        return
+    onTouchMove(event) {
+      if (!this.draggedTask) return
+      event.preventDefault() // prevent page scroll while dragging
+    },
+
+    async onTouchEnd(event) {
+      if (!this.draggedTask) return
+
+      const touch = event.changedTouches[0]
+      const el = document.elementFromPoint(touch.clientX, touch.clientY)
+      const row = el?.closest('[data-task-id]')
+
+      if (row) {
+        const overTaskId = parseInt(row.dataset.taskId)
+        const sectionKey = row.dataset.sectionKey
+
+        if (sectionKey === this.draggedSection && overTaskId !== this.draggedTask.id) {
+          const section = this.sections.find(s => s.key === sectionKey)
+          if (section) {
+            const tasks = [...section.tasks]
+            const fromIdx = tasks.findIndex(t => t.id === this.draggedTask.id)
+            const toIdx = tasks.findIndex(t => t.id === overTaskId)
+
+            if (fromIdx !== -1 && toIdx !== -1) {
+              tasks.splice(fromIdx, 1)
+              tasks.splice(toIdx, 0, this.draggedTask)
+              await Promise.all(tasks.map((t, i) => this.updateSortOrder(t.id, i + 1)))
+            }
+          }
+        }
       }
-      event.dataTransfer.dropEffect = 'move'
-    },
 
-    async onDrop(event, overTask, sectionKey) {
-      if (!this.draggedTask || sectionKey !== this.draggedSection) return
-      if (this.draggedTask.id === overTask.id) return
-
-      const section = this.sections.find(s => s.key === sectionKey)
-      if (!section) return
-
-      // Reorder in-memory optimistically
-      const tasks = [...section.tasks]
-      const fromIdx = tasks.findIndex(t => t.id === this.draggedTask.id)
-      const toIdx = tasks.findIndex(t => t.id === overTask.id)
-      tasks.splice(fromIdx, 1)
-      tasks.splice(toIdx, 0, this.draggedTask)
-
-      // Persist new sort_orders
-      await Promise.all(
-        tasks.map((t, i) => this.updateSortOrder(t.id, i + 1))
-      )
-    },
-
-    onDragEnd() {
       this.draggedTask = null
       this.draggedSection = null
     },
@@ -249,6 +303,44 @@ export default {
   overflow-x: auto;
   scrollbar-width: none;
   &::-webkit-scrollbar { display: none; }
+}
+
+.chip-wrap {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 4px;
+}
+
+.chip-edit-btn {
+  font-size: 14px;
+  color: var(--color-text-tertiary);
+  padding: 2px 4px;
+}
+
+.chip-rename-input {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  border: 1.5px solid var(--color-checked);
+  background: var(--color-surface);
+  outline: none;
+  min-width: 80px;
+}
+
+.chip-rename-save {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-checked);
+  padding: 4px 6px;
+}
+
+.chip-rename-cancel {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  padding: 4px 6px;
 }
 
 .chip {
@@ -304,8 +396,11 @@ export default {
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border-light);
   cursor: grab;
+  touch-action: none; // let JS handle touch events for drag
 
   &:active { cursor: grabbing; }
+
+  &--dragging { opacity: 0.5; }
 }
 
 .drag-handle {

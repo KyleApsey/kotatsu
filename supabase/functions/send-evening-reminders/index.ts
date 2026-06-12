@@ -21,7 +21,7 @@ function getEveningPeriodKey(tz: string): string {
     month: '2-digit',
     day: '2-digit',
   }).format(now)
-  return `evening-${localDate}`
+  return `${localDate}-evening`
 }
 
 Deno.serve(async () => {
@@ -31,10 +31,10 @@ Deno.serve(async () => {
     // Get all active evening tasks
     const { data: tasks, error: tasksErr } = await supabase
       .from('tasks')
-      .select('id, name')
+      .select('id, label')
       .eq('frequency', 'daily')
       .eq('time_of_day', 'evening')
-      .eq('archived', false)
+      .is('archived_at', null)
       .order('sort_order')
 
     if (tasksErr) throw tasksErr
@@ -72,12 +72,12 @@ Deno.serve(async () => {
     }
 
     const title = remaining.length === 1
-      ? `Evening task remaining: ${remaining[0].name}`
+      ? `Evening task remaining: ${remaining[0].label}`
       : `${remaining.length} evening tasks remaining`
 
     const body = remaining.length === 1
       ? 'Tap to mark it done.'
-      : remaining.slice(0, 3).map((t) => `• ${t.name}`).join('\n') +
+      : remaining.slice(0, 3).map((t) => `• ${t.label}`).join('\n') +
         (remaining.length > 3 ? `\n+ ${remaining.length - 3} more` : '')
 
     const payload = JSON.stringify({ title, body })
