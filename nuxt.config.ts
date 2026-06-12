@@ -14,7 +14,7 @@ export default defineNuxtConfig({
     redirectOptions: {
       login: '/login',
       callback: '/confirm',
-      exclude: ['/login'],
+      exclude: ['/login', '/sw.js', '/manifest.webmanifest', '/workbox-*.js'],
     },
   },
 
