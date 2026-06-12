@@ -1,4 +1,4 @@
-function getLocalDateString(date, tz) {
+export function getLocalDateString(date, tz) {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: tz,
     year: 'numeric',

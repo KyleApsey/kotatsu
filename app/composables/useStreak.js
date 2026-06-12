@@ -1,12 +1,17 @@
-function getLocalDateStr(daysAgo, tz, now) {
-  const d = new Date(now)
-  d.setDate(d.getDate() - daysAgo)
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: tz,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(d)
+import { getLocalDateString } from './usePeriodKey.js'
+
+// Shared loop: counts consecutive days (including or starting from yesterday)
+// isDayComplete receives a 'YYYY-MM-DD' string and returns boolean
+function countConsecutiveDays(isDayComplete, now, tz) {
+  const startDaysAgo = isDayComplete(getLocalDateString(now, tz)) ? 0 : 1
+  let streak = 0
+  for (let i = startDaysAgo; i < 3650; i++) {
+    const d = new Date(now)
+    d.setDate(d.getDate() - i)
+    if (!isDayComplete(getLocalDateString(d, tz))) break
+    streak++
+  }
+  return streak
 }
 
 // Pure function — no Nuxt dependency, fully testable
@@ -31,16 +36,20 @@ export function computeStreak(tasks, completions, now, tz) {
     return morningDone && eveningDone
   }
 
-  // If today is fully complete, count from today; otherwise start from yesterday
-  const startDaysAgo = isDayComplete(getLocalDateStr(0, tz, now)) ? 0 : 1
+  return countConsecutiveDays(isDayComplete, now, tz)
+}
 
-  let streak = 0
-  for (let i = startDaysAgo; i < 3650; i++) {
-    if (!isDayComplete(getLocalDateStr(i, tz, now))) break
-    streak++
+// Per-user streak: counts consecutive days where the user completed at least one
+// daily task. Want completions (period_key='done') are excluded — they have no
+// local date component and don't represent a specific day's effort.
+export function computeStreakForUser(tasks, completions, userEmail, now, tz) {
+  function isDayComplete(dateStr) {
+    return completions.some(c =>
+      c.completed_by === userEmail && c.period_key.startsWith(dateStr + '-')
+    )
   }
 
-  return streak
+  return countConsecutiveDays(isDayComplete, now, tz)
 }
 
 export function useStreak(tasks, completions) {
