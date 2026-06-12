@@ -16,6 +16,11 @@ export default defineNuxtConfig({
       callback: '/confirm',
       exclude: ['/login', '/sw.js', '/manifest.webmanifest', '/workbox-*.js'],
     },
+    cookieOptions: {
+      maxAge: 60 * 60 * 8,
+      sameSite: 'lax',
+      secure: !process.dev,
+    },
   },
 
   pwa: {

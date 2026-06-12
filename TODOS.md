@@ -23,3 +23,17 @@
 **Severity:** Medium — blocked by UX tradeoff in the current drag implementation. Practical impact minimal for a 2-user household with short lists.
 
 **Depends on:** T1 (can refactor both drag behaviors together).
+
+---
+
+## T3 — Verify Supabase Redirect URL configuration
+
+**What:** In Supabase Dashboard → Authentication → URL Configuration, ensure:
+- **Site URL** = `https://kotatsu-alpha.vercel.app`
+- **Redirect URLs** includes `http://localhost:3000/**` (for local dev)
+
+**Why:** `signInWithOtp` sends the magic link with `emailRedirectTo = ${window.location.origin}/confirm`. If that URL is not in Supabase's allowlist, Supabase silently falls back to the Site URL. If the Site URL is `http://localhost:3000`, all production magic link emails redirect to localhost — login completely broken in production. The OTP API returns `{}` success either way, so there's no code signal when misconfigured.
+
+**How to apply:** Log into Supabase dashboard → project `vwoyyvkjpdwyvpwphntz` → Authentication → URL Configuration. Add both URLs. No code change needed.
+
+**Depends on:** None. Do this before testing the Bug B fix.

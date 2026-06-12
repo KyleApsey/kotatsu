@@ -36,26 +36,35 @@ export default {
       loading: false,
       sent: false,
       error: null,
+      supabase: null,
     }
+  },
+
+  created() {
+    this.supabase = useSupabaseClient()
   },
 
   methods: {
     async sendMagicLink() {
       this.loading = true
       this.error = null
-      const supabase = useSupabaseClient()
-      const { error } = await supabase.auth.signInWithOtp({
-        email: this.email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/confirm`,
-        },
-      })
-      if (error) {
-        this.error = error.message
-      } else {
-        this.sent = true
+      try {
+        const { error } = await this.supabase.auth.signInWithOtp({
+          email: this.email,
+          options: {
+            emailRedirectTo: `${window.location.origin}/confirm`,
+          },
+        })
+        if (error) {
+          this.error = error.message
+        } else {
+          this.sent = true
+        }
+      } catch (e) {
+        this.error = 'Something went wrong. Please try again.'
+      } finally {
+        this.loading = false
       }
-      this.loading = false
     },
   },
 }
