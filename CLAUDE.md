@@ -128,3 +128,16 @@ Test files live in `tests/` (not co-located):
 ## Task Data Source
 
 `raw_breakdown.md` — the canonical task list. Step 11 of the implementation sequence seeds the database from this file via a one-time Node script.
+
+## Deploy Configuration (configured by /setup-deploy)
+- Platform: Vercel
+- Production URL: https://kotatsu-alpha.vercel.app/
+- Deploy workflow: auto-deploy on push to `main`
+- Project type: web app (Nuxt 4 PWA)
+- Post-deploy health check: https://kotatsu-alpha.vercel.app/
+
+### Custom deploy hooks
+- Pre-merge: `npm test -- --run` (verify 68/68 tests pass)
+- Deploy trigger: automatic on push to main (Vercel GitHub integration)
+- Deploy status: poll https://kotatsu-alpha.vercel.app/ until HTTP 302 (auth redirect = app is up)
+- Health check: HTTP 302 from / is the expected healthy response (app redirects unauthenticated requests to /login)
