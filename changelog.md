@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 
 ### 🐛 Bug Fixes
 
+- *(ship)* Use upsert with ignoreDuplicates for checkTask — prevents silent failure on UNIQUE constraint
 - *(qa)* ISSUE-002 — replace hardcoded hex colors in login.vue with CSS tokens
 - *(qa)* ISSUE-001 — exclude PWA sw.js and manifest from auth redirect
 - Add database types stub to silence supabase module warning
