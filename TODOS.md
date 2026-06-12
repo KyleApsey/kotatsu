@@ -9,3 +9,17 @@
 **How to apply:** Create a Supabase migration with a PL/pgSQL function accepting `int[]` and `int[]`. Update `useTaskAdmin.updateSortOrder` to call it. Update `manage.vue` `onTouchEnd` to call the batch version.
 
 **Depends on:** None.
+
+---
+
+## T2 — Drag-to-reorder blocks iOS page scroll (ISSUE-003)
+
+**What:** `manage-row` has `touch-action: none` in CSS, which tells iOS Safari to hand all touch events to JS rather than use them for native page scrolling. When a task list is longer than the viewport, users cannot scroll by touching task rows — only section headers and the "Add task" buttons remain scrollable.
+
+**Why:** The drag implementation requires `touch-action: none` to prevent iOS from capturing vertical swipes for scroll before JS can handle them. But this makes all rows non-scrollable even when the user isn't dragging.
+
+**How to apply:** Redesign the drag activation model to use a long-press threshold (e.g. 300ms `touchstart` delay sets drag mode, enabling `touch-action: none` dynamically via inline style). Until then, short task lists (≤8 per section) are not affected in practice.
+
+**Severity:** Medium — blocked by UX tradeoff in the current drag implementation. Practical impact minimal for a 2-user household with short lists.
+
+**Depends on:** T1 (can refactor both drag behaviors together).
