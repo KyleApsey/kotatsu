@@ -67,12 +67,12 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #F7F6F1;
+  background: var(--color-bg);
   padding: 24px;
 }
 
 .login-card {
-  background: #FDFCF9;
+  background: var(--color-surface);
   border-radius: 16px;
   padding: 40px 32px;
   width: 100%;
@@ -84,14 +84,14 @@ export default {
 .app-name {
   font-size: 28px;
   font-weight: 700;
-  color: #2C2C2C;
+  color: var(--color-text-primary);
   margin: 0 0 6px;
   letter-spacing: -0.5px;
 }
 
 .tagline {
   font-size: 14px;
-  color: #999;
+  color: var(--color-text-tertiary);
   margin: 0 0 32px;
 }
 
@@ -104,21 +104,21 @@ form {
 input[type="email"] {
   width: 100%;
   padding: 12px 16px;
-  border: 1.5px solid #E8E6E0;
+  border: 1.5px solid var(--color-border);
   border-radius: 10px;
   font-size: 16px;
-  color: #2C2C2C;
-  background: #F7F6F1;
+  color: var(--color-text-primary);
+  background: var(--color-bg);
   outline: none;
   box-sizing: border-box;
   transition: border-color 150ms;
 
   &:focus {
-    border-color: #5A7A5A;
+    border-color: var(--color-done-accent);
   }
 
   &::placeholder {
-    color: #BBB;
+    color: var(--color-checkbox-border);
   }
 
   &:disabled {
@@ -128,7 +128,7 @@ input[type="email"] {
 
 button[type="submit"] {
   padding: 13px 16px;
-  background: #5A7A5A;
+  background: var(--color-done-accent);
   color: #fff;
   border: none;
   border-radius: 10px;
@@ -145,7 +145,7 @@ button[type="submit"] {
 
 .sent p {
   font-size: 15px;
-  color: #5A7A5A;
+  color: var(--color-done-accent);
   font-weight: 500;
 }
 
