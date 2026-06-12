@@ -177,11 +177,12 @@ export default {
     async checkTask(task, periodKey) {
       const supabase = useSupabaseClient()
       const user = useSupabaseUser().value
-      await supabase.from('completions').insert({
+      await supabase.from('completions').upsert({
         task_id: task.id,
         period_key: periodKey,
         completed_by: user?.email || 'unknown',
-      })
+        completed_at: new Date().toISOString(),
+      }, { onConflict: 'task_id,period_key', ignoreDuplicates: true })
     },
 
     async uncheckTask(task, periodKey) {
